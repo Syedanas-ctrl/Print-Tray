@@ -1,0 +1,63 @@
+{
+  "name": "zat-print-tray",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "dist": "electron-builder"
+  },
+  "keywords": [],
+  "productName": "ZAT Print Tray",
+  "author": "",
+  "license": "ISC",
+  "build": {
+    "appId": "com.zat.printtray",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "icon": "build/icons/mac/icon.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.utilities"
+    },
+    "win": {
+      "icon": "build/icons/win/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "icon": "build/icons/png",
+      "target": [
+        "AppImage"
+      ],
+      "category": "Utility"
+    }
+  },
+  "devDependencies": {
+    "electron": "^39.1.1",
+    "electron-builder": "^26.0.12",
+    "electron-icon-builder": "^2.0.1"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "electron-log": "^5.4.3",
+    "express": "^5.1.0",
+    "systeminformation": "^5.27.11"
+  }
+}
