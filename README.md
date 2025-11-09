@@ -2,7 +2,7 @@
 
 ZAT Print Tray is a lightweight Electron background application that exposes a local HTTP API for discovering printers and dispatching silent print jobs. It is designed to sit in the system tray, start automatically with the operating system, and bridge web-based point-of-sale systems to native printer capabilities.
 
-👉 **Download:** [Get the latest installer](https://example.com/zat-print-tray-download) _(replace with the real link before sharing)_
+👉 **Download:** [Get the latest installer](https://drive.google.com/drive/folders/1Eems3pgGCFhB1wqeHUeNb76n20vECfeG?usp=drive_link)
 
 ## Features
 
