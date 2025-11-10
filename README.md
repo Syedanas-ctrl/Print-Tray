@@ -14,9 +14,10 @@ ZAT Print Tray is a lightweight Electron background application that exposes a l
 
 ## Requirements
 
-- Node.js 18 or newer (Electron 39 requires minimum Node 18 runtime for development).
-- npm 9+ (ships with current Node installers).
-- macOS, Windows, or Linux workstation with installed system printers.
+- Node.js 16.17 or newer (Electron 22 bundles Node 16 LTS; Node 18+ also works).
+- npm 8.15+ (ships with current Node installers).
+- macOS, Windows (7 SP1+ 64-bit or 32-bit), or Linux workstation with installed system printers.
+- Windows: ensure [.NET Framework 4.5+](https://dotnet.microsoft.com/en-us/download/dotnet-framework/net45) and [KB2999226](https://support.microsoft.com/kb/2999226) are installed before running or installing the tray app.
 
 ## Getting Started
 
@@ -48,7 +49,12 @@ ZAT Print Tray is a lightweight Electron background application that exposes a l
    npm run dist
    ```
 
-   Packages are emitted to the `dist/` directory for the host platform (DMG/ZIP for macOS, NSIS installer for Windows x64, AppImage for Linux).
+   Packages are emitted to the `dist/` directory for the host platform:
+   - macOS: DMG and ZIP
+   - Windows: NSIS installers for both `x64` and `ia32`
+   - Linux: AppImage
+   
+   On macOS, building Windows artifacts requires CrossOver/Wine; otherwise run the command on a Windows build host or CI runner.
 
 ## Configuration
 
@@ -114,6 +120,8 @@ The application uses `electron-log` and writes structured output to the platform
 
 ## Production Notes
 
+- The app targets Electron 22.3.27 to retain compatibility with Windows 7, but that Chromium/Node combo no longer receives security updates. Restrict network exposure and keep printing payloads trusted.
 - The app holds a single-instance lock to avoid concurrent API servers.
-- `app.setLoginItemSettings({ openAtLogin: true })` is invoked on startup to register auto-launch. Adjust if your deployment requires a different behaviour.
+- `app.setLoginItemSettings({ openAtLogin: true })` is invoked on startup to register auto-launch. On Windows 7 this writes to the Run key; administrator privileges may be required in locked-down environments.
 - Update the icons in `build/icons/` before producing customer builds.
+- When distributing Windows installers, provide the matching architecture (x86 for 32-bit, x64 for 64-bit). Auto-updaters should respect architecture as well.

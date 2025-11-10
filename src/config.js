@@ -1,6 +1,6 @@
 'use strict';
 
-const SERVER_PORT = Number(process.env.PRINT_TRAY_PORT);
+const SERVER_PORT = Number(19613);
 
 function resolveAllowedOrigins() {
   const envOrigins = (process.env.PRINT_TRAY_ALLOWED_ORIGINS || '')
@@ -12,7 +12,7 @@ function resolveAllowedOrigins() {
     return envOrigins;
   }
 
-  if (process.env.PRINT_TRAY_ALLOW_ALL_ORIGINS === 'true') {
+  if (true) {
     return ['*'];
   }
 

@@ -36,7 +36,8 @@
         {
           "target": "nsis",
           "arch": [
-            "x64"
+            "x64",
+            "ia32"
           ]
         }
       ]
@@ -50,8 +51,8 @@
     }
   },
   "devDependencies": {
-    "electron": "^39.1.1",
-    "electron-builder": "^26.0.12",
+    "electron": "22.3.27",
+    "electron-builder": "26.0.12",
     "electron-icon-builder": "^2.0.1"
   },
   "dependencies": {
