@@ -70,6 +70,34 @@ async function performPrintJob(payload) {
     await win.loadURL(dataUrl);
   }
 
+  // Wait for page to load
+  await new Promise((resolve) => {
+    if (win.webContents.isLoading()) {
+      win.webContents.once('did-finish-load', resolve);
+    } else {
+      resolve();
+    }
+  });
+
+  // Inject CSS to remove default margins before printing
+  await win.webContents.insertCSS(`
+    @media print {
+      @page {
+        margin: 0 !important;
+      }
+      body {
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      html {
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+    }
+  `).catch((err) => {
+    log.warn('Failed to inject print CSS', err);
+  });
+
   return new Promise((resolve, reject) => {
     const printOptions = {
       silent: true,
