@@ -1,7 +1,11 @@
 'use strict';
 
+const { shell } = require('electron');
 const log = require('electron-log');
 const si = require('systeminformation');
+const os = require('node:os');
+const path = require('node:path');
+const fs = require('node:fs');
 
 const { ensurePrintWindow } = require('./print-window');
 
@@ -52,7 +56,7 @@ function enqueuePrint(task) {
 }
 
 async function performPrintJob(payload) {
-  const { html, url, printerName, copies, landscape, printBackground } = payload;
+  const { html, url, printerName, copies, landscape, printBackground, preview } = payload;
 
   if (!html && !url) {
     const error = new Error('Print payload must include either an html or url property.');
@@ -70,34 +74,32 @@ async function performPrintJob(payload) {
     await win.loadURL(dataUrl);
   }
 
-  // Wait for page to load
-  await new Promise((resolve) => {
-    if (win.webContents.isLoading()) {
-      win.webContents.once('did-finish-load', resolve);
-    } else {
-      resolve();
-    }
-  });
+  // Preview mode: generate a PDF and open it in the OS viewer (Preview on macOS)
+  if (preview) {
+    try {
+      const pdfData = await win.webContents.printToPDF({
+        printBackground: printBackground !== false,
+        landscape: Boolean(landscape)
+      });
 
-  // Inject CSS to remove default margins before printing
-  await win.webContents.insertCSS(`
-    @media print {
-      @page {
-        margin: 0 !important;
-      }
-      body {
-        margin: 0 !important;
-        padding: 0 !important;
-      }
-      html {
-        margin: 0 !important;
-        padding: 0 !important;
-      }
-    }
-  `).catch((err) => {
-    log.warn('Failed to inject print CSS', err);
-  });
+      const tmpDir = os.tmpdir();
+      const filePath = path.join(tmpDir, `zat-print-preview-${Date.now()}.pdf`);
+      fs.writeFileSync(filePath, pdfData);
 
+      // Open the PDF with the default viewer (Preview on macOS)
+      await shell.openPath(filePath);
+
+      // Do not reset the window immediately – let the user inspect / print from Preview.
+      return true;
+    } catch (error) {
+      log.error('Print preview failed', error);
+      const err = new Error('Print preview failed');
+      err.code = 'PREVIEW_FAILED';
+      throw err;
+    }
+  }
+
+  // Normal silent print to the selected printer
   return new Promise((resolve, reject) => {
     const printOptions = {
       silent: true,
