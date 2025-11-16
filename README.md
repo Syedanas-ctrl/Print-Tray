@@ -99,7 +99,14 @@ Enqueues a silent print job. Provide either `html` or `url` in the request body.
   "html": "<html>…</html>",
   "copies": 1,
   "landscape": false,
-  "printBackground": true
+  "printBackground": true,
+  "marginType": "none",
+  "margins": {
+    "top": "0",
+    "right": "0",
+    "bottom": "0",
+    "left": "0"
+  }
 }
 ```
 
@@ -111,6 +118,8 @@ Enqueues a silent print job. Provide either `html` or `url` in the request body.
 | `copies` | integer | Number of copies (defaults to 1). |
 | `landscape` | boolean | Print orientation (defaults to `false`). |
 | `printBackground` | boolean | Include CSS backgrounds (defaults to `true`). |
+| `marginType` | string | Page margin type: `"none"` (no margins), `"minimum"` (0.5cm), `"default"` (1cm), or `"custom"` (requires `margins` object). Defaults to `"default"`. **For thermal printers, use `"none"` or `"minimum"` to avoid additional driver margins.** |
+| `margins` | object | Custom margin values (only used when `marginType` is `"custom"`). Each value is a CSS length string with units (e.g., `"0"`, `"16px"`, `"0.5cm"`, `"10mm"`, `"12pt"`). If no unit is provided, the value is assumed to be in pixels (e.g., `"16"` is treated as `"16px"`). Properties: `top`, `right`, `bottom`, `left`. |
 
 If the payload is invalid, the API replies with HTTP 400. Print errors respond with HTTP 500.
 

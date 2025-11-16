@@ -1,128 +1,80 @@
 'use strict';
 
-const { shell } = require('electron');
-const log = require('electron-log');
-const si = require('systeminformation');
-const os = require('node:os');
-const path = require('node:path');
-const fs = require('node:fs');
-
 const { ensurePrintWindow } = require('./print-window');
+const { listPrinters } = require('./printing/printer-enumeration');
+const { enqueuePrint } = require('./printing/print-queue');
+const { preparePageForPrinting } = require('./printing/page-loader');
+const { generatePDFPreview } = require('./printing/pdf-preview');
+const { performDirectPrint } = require('./printing/direct-print');
 
-let printQueue = Promise.resolve();
-
-async function listPrinters() {
-  try {
-    const win = await ensurePrintWindow();
-    const printers = await win.webContents.getPrintersAsync();
-
-    if (Array.isArray(printers) && printers.length) {
-      return printers.map((printer) => ({
-        name: printer.name,
-        description: printer.description,
-        displayName: printer.displayName,
-        isDefault: Boolean(printer.isDefault),
-        status: printer.status,
-        options: printer.options
-      }));
-    }
-  } catch (error) {
-    log.warn('Electron printer enumeration failed, falling back to systeminformation', error);
-  }
-
-  try {
-    const fallback = await si.printer();
-    if (Array.isArray(fallback)) {
-      return fallback.map((printer) => ({
-        name: printer.name,
-        description: printer.model,
-        isDefault: Boolean(printer.default),
-        status: printer.status
-      }));
-    }
-  } catch (error) {
-    log.error('System printer enumeration failed', error);
-  }
-
-  return [];
-}
-
-function enqueuePrint(task) {
-  const next = printQueue.then(task);
-  printQueue = next.catch((error) => {
-    log.error('Print queue task failed', error);
-  });
-  return next;
-}
-
-async function performPrintJob(payload) {
-  const { html, url, printerName, copies, landscape, printBackground, preview } = payload;
-
+/**
+ * Validates the print job payload.
+ *
+ * @param {object} payload - Print job payload
+ * @throws {Error} If payload is invalid
+ */
+function validatePayload(payload) {
+  const { html, url } = payload;
+  
   if (!html && !url) {
     const error = new Error('Print payload must include either an html or url property.');
     error.code = 'INVALID_PAYLOAD';
     throw error;
   }
+}
+
+/**
+ * Performs a print job based on the provided payload.
+ * Handles both PDF preview and direct printing to a printer.
+ *
+ * @param {object} payload - Print job configuration
+ * @param {string} payload.html - HTML content to print (mutually exclusive with url)
+ * @param {string} payload.url - URL to load and print (mutually exclusive with html)
+ * @param {string} payload.printerName - Optional printer name
+ * @param {number} payload.copies - Number of copies (defaults to 1)
+ * @param {boolean} payload.landscape - Print orientation (defaults to false)
+ * @param {boolean} payload.printBackground - Include CSS backgrounds (defaults to true)
+ * @param {boolean} payload.preview - If true, generates PDF preview instead of printing
+ * @param {string} payload.marginType - Margin type: 'none', 'minimum', 'default', or 'custom'
+ * @param {object} payload.margins - Custom margins object with top, right, bottom, left
+ * @returns {Promise<boolean>} Resolves to true when print job completes
+ */
+async function performPrintJob(payload) {
+  const {
+    html,
+    url,
+    printerName,
+    copies,
+    landscape,
+    printBackground,
+    preview,
+    margins,
+    marginType
+  } = payload;
+
+  validatePayload(payload);
 
   const win = await ensurePrintWindow();
 
-  if (url) {
-    await win.loadURL(url, { userAgent: 'ZAT-Tray' });
-  } else if (html) {
-    const htmlEncoded = encodeURIComponent(html);
-    const dataUrl = `data:text/html;charset=utf-8,${htmlEncoded}`;
-    await win.loadURL(dataUrl);
-  }
+  // Prepare the page: load content and inject margin CSS
+  await preparePageForPrinting(win, url, html, marginType, margins);
 
-  // Preview mode: generate a PDF and open it in the OS viewer (Preview on macOS)
+  // Handle preview mode: generate PDF and open in viewer
   if (preview) {
-    try {
-      const pdfData = await win.webContents.printToPDF({
-        printBackground: printBackground !== false,
-        landscape: Boolean(landscape)
-      });
-
-      const tmpDir = os.tmpdir();
-      const filePath = path.join(tmpDir, `zat-print-preview-${Date.now()}.pdf`);
-      fs.writeFileSync(filePath, pdfData);
-
-      // Open the PDF with the default viewer (Preview on macOS)
-      await shell.openPath(filePath);
-
-      // Do not reset the window immediately – let the user inspect / print from Preview.
-      return true;
-    } catch (error) {
-      log.error('Print preview failed', error);
-      const err = new Error('Print preview failed');
-      err.code = 'PREVIEW_FAILED';
-      throw err;
-    }
+    return await generatePDFPreview(win, {
+      printBackground,
+      landscape,
+      marginType,
+      margins
+    });
   }
 
   // Normal silent print to the selected printer
-  return new Promise((resolve, reject) => {
-    const printOptions = {
-      silent: true,
-      deviceName: printerName || undefined,
-      landscape: Boolean(landscape),
-      copies: copies && Number.isInteger(copies) ? copies : 1,
-      printBackground: printBackground !== false
-    };
-
-    win.webContents.print(printOptions, (success, failureReason) => {
-      if (success) {
-        resolve(true);
-        setImmediate(() => {
-          win.loadURL('about:blank').catch((err) => {
-            log.warn('Failed to reset print window after job', err);
-          });
-        });
-      } else {
-        const error = new Error(failureReason || 'Unknown print failure');
-        error.code = 'PRINT_FAILED';
-        reject(error);
-      }
-    });
+  return await performDirectPrint(win, {
+    printerName,
+    landscape,
+    copies,
+    printBackground
   });
 }
 
@@ -131,4 +83,3 @@ module.exports = {
   enqueuePrint,
   performPrintJob
 };
-
